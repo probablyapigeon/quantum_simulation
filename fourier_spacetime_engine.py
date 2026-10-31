@@ -22,13 +22,13 @@ def compute_pure_python_curvature(G):
     return np.mean(curvatures) if curvatures else 0
 
 def run_fourier_analysis_3d(matrix_size=64, audio_path=r"C:\Users\kiers\Downloads\He Can Try (Demo_Mix).mp3"):
-    print(f"=== Initializing 3D Thermodynamic Spacetime Engine ===")
+    print(f"=== Initializing Stabilized 3D Phase Space Engine ===")
     
     if not os.path.exists(audio_path):
         print(f"[!] Error: Target file not found at: {audio_path}")
         return
 
-    print("Decoding native MP3 parameters into data arrays...")
+    print("Decoding native MP3 parameters...")
     sound = miniaudio.decode_file(audio_path)
     sample_rate = sound.sample_rate
     data = np.array(sound.samples, dtype=np.float32)
@@ -40,13 +40,14 @@ def run_fourier_analysis_3d(matrix_size=64, audio_path=r"C:\Users\kiers\Download
     total_frames = min(int((len(audio_signal) / sample_rate) * frames_per_second), 250)
     samples_per_frame = int(sample_rate / frames_per_second)
     
-    # Phase Space Fields
-    X1 = torch.randn(matrix_size, matrix_size) * 0.5
-    X2 = torch.randn(matrix_size, matrix_size) * 0.5
-    P1 = torch.randn(matrix_size, matrix_size) * 0.2
-    P2 = torch.randn(matrix_size, matrix_size) * 0.2
+    # Bounded Phase Space Field Initializations
+    X1 = torch.randn(matrix_size, matrix_size) * 0.1
+    X2 = torch.randn(matrix_size, matrix_size) * 0.1
+    P1 = torch.randn(matrix_size, matrix_size) * 0.05
+    P2 = torch.randn(matrix_size, matrix_size) * 0.05
     
-    dt = 0.05
+    dt = 0.02          
+    damping = 0.85     
     
     metrics_log_path = "matrix_energy_metrics.csv"
     csv_file = open(metrics_log_path, mode='w', newline='')
@@ -89,25 +90,30 @@ def run_fourier_analysis_3d(matrix_size=64, audio_path=r"C:\Users\kiers\Download
         mid_mask = (fft_frequencies > 150) & (fft_frequencies <= 2500)
         high_mask = (fft_frequencies > 2500) & (fft_frequencies <= 15000)
         
-        bass_volt = min((np.mean(fft_values[bass_mask]) / np.max(fft_values)) * 5.0, 5.0) if np.any(bass_mask) else 0
-        mid_volt = min((np.mean(fft_values[mid_mask]) / np.max(fft_values)) * 4.0, 4.0) if np.any(mid_mask) else 0
-        high_volt = min((np.mean(fft_values[high_mask]) / np.max(fft_values)) * 3.0, 3.0) if np.any(high_mask) else 0
+        max_fft = np.max(fft_values) if len(fft_values) > 0 and np.max(fft_values) > 0 else 1.0
+        bass_volt = min((np.mean(fft_values[bass_mask]) / max_fft) * 5.0, 5.0) if np.any(bass_mask) else 0
+        mid_volt = min((np.mean(fft_values[mid_mask]) / max_fft) * 4.0, 4.0) if np.any(mid_mask) else 0
+        high_volt = min((np.mean(fft_values[high_mask]) / max_fft) * 3.0, 3.0) if np.any(high_mask) else 0
         
         dominant_freq = fft_frequencies[np.argmax(fft_values)] if len(fft_values) > 0 else 0
         
         defect_potentials = torch.zeros(matrix_size, matrix_size)
-        defect_potentials[22:42, 22:42] = float(bass_volt * 4.0)
-        defect_potentials[0:12, :] = float(high_volt * 2.0)
-        defect_potentials[:, 50:62] = float(mid_volt * 2.5)
+        defect_potentials[22:42, 22:42] = float(bass_volt * 2.0)
+        defect_potentials[0:12, :] = float(high_volt * 1.0)
+        defect_potentials[:, 50:62] = float(mid_volt * 1.5)
         
-        # Symplectic updates
+        # Self-Stabilizing Updates
         X1_eff, X2_eff = X1 + defect_potentials, X2 + defect_potentials
         commutator = torch.mm(X1_eff, X2_eff) - torch.mm(X2_eff, X1_eff)
+        
         F1 = -2.0 * (torch.mm(commutator, X2_eff) - torch.mm(X2_eff, commutator))
         F2 = 2.0 * (torch.mm(commutator, X1_eff) - torch.mm(X1_eff, commutator))
         
-        P1 += F1 * (dt / 2.0)
-        P2 += F2 * (dt / 2.0)
+        F1 = torch.clamp(F1, min=-10.0, max=10.0)
+        F2 = torch.clamp(F2, min=-10.0, max=10.0)
+        
+        P1 = P1 * damping + F1 * (dt / 2.0)
+        P2 = P2 * damping + F2 * (dt / 2.0)
         X1 += P1 * dt
         X2 += P2 * dt
         
@@ -115,8 +121,12 @@ def run_fourier_analysis_3d(matrix_size=64, audio_path=r"C:\Users\kiers\Download
         commutator_new = torch.mm(X1_eff, X2_eff) - torch.mm(X2_eff, X1_eff)
         F1_new = -2.0 * (torch.mm(commutator_new, X2_eff) - torch.mm(X2_eff, commutator_new))
         F2_new = 2.0 * (torch.mm(commutator_new, X1_eff) - torch.mm(X1_eff, commutator_new))
-        P1 += F1_new * (dt / 2.0)
-        P2 += F2_new * (dt / 2.0)
+        
+        F1_new = torch.clamp(F1_new, min=-10.0, max=10.0)
+        F2_new = torch.clamp(F2_new, min=-10.0, max=10.0)
+        
+        P1 = P1 * damping + F1_new * (dt / 2.0)
+        P2 = P2 * damping + F2_new * (dt / 2.0)
         
         pe_val = -torch.trace(torch.mm(commutator_new, commutator_new)).item()
         ke_val = (torch.trace(torch.mm(P1, P1)) + torch.trace(torch.mm(P2, P2))).item()
@@ -127,11 +137,11 @@ def run_fourier_analysis_3d(matrix_size=64, audio_path=r"C:\Users\kiers\Download
         G = nx.from_numpy_array((correlation > threshold).astype(int))
         
         curv_scale = compute_pure_python_curvature(G)
-        log_writer.writerow([frame_idx, f"{pe_val:.2f}", f"{ke_val:.2f}", f"{total_energy:.2f}", f"{curv_scale:.4f}", f"{dominant_freq:.1f}"])
+        log_writer.writerow([frame_idx, f"{pe_val:.4f}", f"{ke_val:.4f}", f"{total_energy:.4f}", f"{curv_scale:.4f}", f"{dominant_freq:.1f}"])
         
         nodes_list = list(G.nodes())
         
-        # FIXED: Explicitly slicing indices, [1], and [2] to prevent size multiplication errors
+        # FIXED: Added explicit axis dimension slices, [1], [2] to unpack 1D coordinates perfectly
         xs = np.array([pos_3d[node][0] for node in nodes_list])
         ys = np.array([pos_3d[node][1] for node in nodes_list])
         zs = np.array([pos_3d[node][2] - (G.degree(node)*0.01 * bass_volt) if node in G else pos_3d[node][2] for node in nodes_list])
@@ -154,8 +164,8 @@ def run_fourier_analysis_3d(matrix_size=64, audio_path=r"C:\Users\kiers\Download
         ax.view_init(elev=20 + math.sin(frame_idx * 0.05) * 5, azim=frame_idx * 0.5)
         
         ax.set_title(
-            f"3D Spacetime Phase Space Engine [FFT]\n"
-            f"PE (Action): {pe_val:.1f} | KE (Momentum): {ke_val:.1f}",
+            f"Stabilized Phase Space System [FFT]\n"
+            f"PE (Action): {pe_val:.2f} | KE (Momentum): {ke_val:.2f}",
             color='#FFFFFF', fontsize=12, fontweight='bold', y=0.95
         )
 
@@ -165,7 +175,7 @@ def run_fourier_analysis_3d(matrix_size=64, audio_path=r"C:\Users\kiers\Download
     ani.save(output_filename, writer='pillow', fps=12)
     plt.close()
     csv_file.close()
-    print(f"\nSuccess! Orbit-stable 3D engine pass complete.")
+    print(f"\nSuccess! Orbit-stable self-stabilizing pass complete.")
     print(f" -> Log Database Updated: .\\{metrics_log_path}")
 
 if __name__ == "__main__":
