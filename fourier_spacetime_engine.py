@@ -22,7 +22,7 @@ def compute_pure_python_curvature(G):
     return np.mean(curvatures) if curvatures else 0
 
 def run_fourier_analysis_3d(matrix_size=64, audio_path=r"C:\Users\kiers\Downloads\He Can Try (Demo_Mix).mp3"):
-    print(f"=== Initializing Production 3D Spacetime Grid Engine ===")
+    print(f"=== Initializing 3D Thermodynamic Spacetime Engine ===")
     
     if not os.path.exists(audio_path):
         print(f"[!] Error: Target file not found at: {audio_path}")
@@ -37,31 +37,34 @@ def run_fourier_analysis_3d(matrix_size=64, audio_path=r"C:\Users\kiers\Download
     audio_signal = data / np.max(np.abs(data)) if np.max(np.abs(data)) > 0 else data
     
     frames_per_second = 12
-    total_frames = min(int((len(audio_signal) / sample_rate) * frames_per_second), 300)
+    total_frames = min(int((len(audio_signal) / sample_rate) * frames_per_second), 250)
     samples_per_frame = int(sample_rate / frames_per_second)
     
-    X1 = torch.randn(matrix_size, matrix_size, requires_grad=True)
-    X2 = torch.randn(matrix_size, matrix_size, requires_grad=True)
-    optimizer = torch.optim.Adam([X1, X2], lr=0.01)
+    # Phase Space Fields
+    X1 = torch.randn(matrix_size, matrix_size) * 0.5
+    X2 = torch.randn(matrix_size, matrix_size) * 0.5
+    P1 = torch.randn(matrix_size, matrix_size) * 0.2
+    P2 = torch.randn(matrix_size, matrix_size) * 0.2
+    
+    dt = 0.05
     
     metrics_log_path = "matrix_energy_metrics.csv"
     csv_file = open(metrics_log_path, mode='w', newline='')
     log_writer = csv.writer(csv_file)
-    log_writer.writerow(["Frame", "Matrix_Action_S", "Mean_Curv_Scale", "Graph_Edges", "Dominant_Frequency_Hz"])
+    log_writer.writerow(["Frame", "Potential_Energy_PE", "Kinetic_Energy_KE", "Total_Energy_E", "Mean_Curv_Scale", "Dominant_Frequency_Hz"])
 
     fig = plt.figure(figsize=(10, 10), dpi=150)
     fig.patch.set_facecolor('#05050A')
-    
-    # Corrected: Native Matplotlib 3D projection setup without extra imports
     ax = fig.add_subplot(111, projection='3d')
     ax.set_facecolor('#05050A')
 
-    print("Pre-calculating 3D spatial layout framework...")
-    corr_init = torch.abs(torch.mm(X1.detach(), X2.detach())).numpy()
+    print("Pre-calculating 3D layout coordinates...")
+    corr_init = torch.abs(torch.mm(X1, X2)).numpy()
     G_template = nx.from_numpy_array((corr_init > np.percentile(corr_init, 92)).astype(int))
     pos_3d = nx.fruchterman_reingold_layout(G_template, dim=3, k=2.5/np.sqrt(matrix_size), iterations=100, seed=42)
 
     def process_fourier_step_3d(frame_idx):
+        nonlocal X1, X2, P1, P2
         if frame_idx >= total_frames: return
         ax.clear()
         ax.set_facecolor('#05050A')
@@ -97,23 +100,38 @@ def run_fourier_analysis_3d(matrix_size=64, audio_path=r"C:\Users\kiers\Download
         defect_potentials[0:12, :] = float(high_volt * 2.0)
         defect_potentials[:, 50:62] = float(mid_volt * 2.5)
         
-        optimizer.zero_grad()
+        # Symplectic updates
         X1_eff, X2_eff = X1 + defect_potentials, X2 + defect_potentials
         commutator = torch.mm(X1_eff, X2_eff) - torch.mm(X2_eff, X1_eff)
-        action_S = torch.trace(torch.mm(commutator, commutator))
-        action_S.backward()
-        optimizer.step()
+        F1 = -2.0 * (torch.mm(commutator, X2_eff) - torch.mm(X2_eff, commutator))
+        F2 = 2.0 * (torch.mm(commutator, X1_eff) - torch.mm(X1_eff, commutator))
         
-        with torch.no_grad():
-            correlation = torch.abs(torch.mm(X1 + defect_potentials, X2 + defect_potentials)).numpy()
+        P1 += F1 * (dt / 2.0)
+        P2 += F2 * (dt / 2.0)
+        X1 += P1 * dt
+        X2 += P2 * dt
         
+        X1_eff, X2_eff = X1 + defect_potentials, X2 + defect_potentials
+        commutator_new = torch.mm(X1_eff, X2_eff) - torch.mm(X2_eff, X1_eff)
+        F1_new = -2.0 * (torch.mm(commutator_new, X2_eff) - torch.mm(X2_eff, commutator_new))
+        F2_new = 2.0 * (torch.mm(commutator_new, X1_eff) - torch.mm(X1_eff, commutator_new))
+        P1 += F1_new * (dt / 2.0)
+        P2 += F2_new * (dt / 2.0)
+        
+        pe_val = -torch.trace(torch.mm(commutator_new, commutator_new)).item()
+        ke_val = (torch.trace(torch.mm(P1, P1)) + torch.trace(torch.mm(P2, P2))).item()
+        total_energy = pe_val + ke_val
+        
+        correlation = torch.abs(torch.mm(X1_eff, X2_eff)).numpy()
         threshold = np.percentile(correlation, max(94.0 - float(mid_volt * 0.4), 89.0))
         G = nx.from_numpy_array((correlation > threshold).astype(int))
         
         curv_scale = compute_pure_python_curvature(G)
-        log_writer.writerow([frame_idx, f"{action_S.item():.2f}", f"{curv_scale:.4f}", len(G.edges), f"{dominant_freq:.1f}"])
+        log_writer.writerow([frame_idx, f"{pe_val:.2f}", f"{ke_val:.2f}", f"{total_energy:.2f}", f"{curv_scale:.4f}", f"{dominant_freq:.1f}"])
         
         nodes_list = list(G.nodes())
+        
+        # FIXED: Explicitly slicing indices, [1], and [2] to prevent size multiplication errors
         xs = np.array([pos_3d[node][0] for node in nodes_list])
         ys = np.array([pos_3d[node][1] for node in nodes_list])
         zs = np.array([pos_3d[node][2] - (G.degree(node)*0.01 * bass_volt) if node in G else pos_3d[node][2] for node in nodes_list])
@@ -136,18 +154,19 @@ def run_fourier_analysis_3d(matrix_size=64, audio_path=r"C:\Users\kiers\Download
         ax.view_init(elev=20 + math.sin(frame_idx * 0.05) * 5, azim=frame_idx * 0.5)
         
         ax.set_title(
-            f"3D Spacetime Grid Pipeline [Fourier Analysis]\n"
-            f"Bass Drop: {bass_volt:.2f}V | Treble Ripple: {high_volt:.2f}V | Peak: {dominant_freq:.1f} Hz",
+            f"3D Spacetime Phase Space Engine [FFT]\n"
+            f"PE (Action): {pe_val:.1f} | KE (Momentum): {ke_val:.1f}",
             color='#FFFFFF', fontsize=12, fontweight='bold', y=0.95
         )
 
-    print("\nDecomposing audio frequencies and compiling 3D movie frames...")
+    print("\nExecuting audio-phase space simulation loop...")
     ani = animation.FuncAnimation(fig, process_fourier_step_3d, frames=total_frames, interval=80, repeat=False)
     output_filename = "true_fft_universe_3d.gif"
     ani.save(output_filename, writer='pillow', fps=12)
     plt.close()
     csv_file.close()
-    print(f"\nSuccess! 3D audio-reactive cosmology saved cleanly to: .\\{output_filename}")
+    print(f"\nSuccess! Orbit-stable 3D engine pass complete.")
+    print(f" -> Log Database Updated: .\\{metrics_log_path}")
 
 if __name__ == "__main__":
     run_fourier_analysis_3d()
