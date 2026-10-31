@@ -22,7 +22,7 @@ def compute_pure_python_curvature(G):
     return np.mean(curvatures) if curvatures else 0
 
 def run_fourier_analysis_3d(matrix_size=64, audio_path=r"C:\Users\kiers\Downloads\He Can Try (Demo_Mix).mp3"):
-    print(f"=== Initializing Stabilized 3D Phase Space Engine ===")
+    print(f"=== Initializing Orbital Phase-Space Trajectory Engine ===")
     
     if not os.path.exists(audio_path):
         print(f"[!] Error: Target file not found at: {audio_path}")
@@ -40,14 +40,17 @@ def run_fourier_analysis_3d(matrix_size=64, audio_path=r"C:\Users\kiers\Download
     total_frames = min(int((len(audio_signal) / sample_rate) * frames_per_second), 250)
     samples_per_frame = int(sample_rate / frames_per_second)
     
-    # Bounded Phase Space Field Initializations
-    X1 = torch.randn(matrix_size, matrix_size) * 0.1
-    X2 = torch.randn(matrix_size, matrix_size) * 0.1
-    P1 = torch.randn(matrix_size, matrix_size) * 0.05
-    P2 = torch.randn(matrix_size, matrix_size) * 0.05
+    # Initialize position matrices with a clean, circular orbital offset
+    theta_init = np.linspace(0, 2 * np.pi, matrix_size)
+    X1 = torch.tensor(np.diag(np.cos(theta_init) * 0.4), dtype=torch.float32)
+    X2 = torch.tensor(np.diag(np.sin(theta_init) * 0.4), dtype=torch.float32)
     
-    dt = 0.02          
-    damping = 0.85     
+    # Initialize momentum matrices to act as perpendicular velocity vectors
+    P1 = torch.tensor(np.diag(-np.sin(theta_init) * 0.15), dtype=torch.float32)
+    P2 = torch.tensor(np.diag(np.cos(theta_init) * 0.15), dtype=torch.float32)
+    
+    dt = 0.04          
+    damping = 0.96 # Reduced damping slightly to let orbital momentum slide further
     
     metrics_log_path = "matrix_energy_metrics.csv"
     csv_file = open(metrics_log_path, mode='w', newline='')
@@ -58,11 +61,6 @@ def run_fourier_analysis_3d(matrix_size=64, audio_path=r"C:\Users\kiers\Download
     fig.patch.set_facecolor('#05050A')
     ax = fig.add_subplot(111, projection='3d')
     ax.set_facecolor('#05050A')
-
-    print("Pre-calculating 3D layout coordinates...")
-    corr_init = torch.abs(torch.mm(X1, X2)).numpy()
-    G_template = nx.from_numpy_array((corr_init > np.percentile(corr_init, 92)).astype(int))
-    pos_3d = nx.fruchterman_reingold_layout(G_template, dim=3, k=2.5/np.sqrt(matrix_size), iterations=100, seed=42)
 
     def process_fourier_step_3d(frame_idx):
         nonlocal X1, X2, P1, P2
@@ -98,19 +96,19 @@ def run_fourier_analysis_3d(matrix_size=64, audio_path=r"C:\Users\kiers\Download
         dominant_freq = fft_frequencies[np.argmax(fft_values)] if len(fft_values) > 0 else 0
         
         defect_potentials = torch.zeros(matrix_size, matrix_size)
-        defect_potentials[22:42, 22:42] = float(bass_volt * 2.0)
-        defect_potentials[0:12, :] = float(high_volt * 1.0)
-        defect_potentials[:, 50:62] = float(mid_volt * 1.5)
+        defect_potentials[22:42, 22:42] = float(bass_volt * 1.5)
+        defect_potentials[0:12, :] = float(high_volt * 0.8)
+        defect_potentials[:, 50:62] = float(mid_volt * 1.2)
         
-        # Self-Stabilizing Updates
+        # --- PHASE SPACE LEAPFROG update ENGINE ---
         X1_eff, X2_eff = X1 + defect_potentials, X2 + defect_potentials
         commutator = torch.mm(X1_eff, X2_eff) - torch.mm(X2_eff, X1_eff)
         
         F1 = -2.0 * (torch.mm(commutator, X2_eff) - torch.mm(X2_eff, commutator))
         F2 = 2.0 * (torch.mm(commutator, X1_eff) - torch.mm(X1_eff, commutator))
         
-        F1 = torch.clamp(F1, min=-10.0, max=10.0)
-        F2 = torch.clamp(F2, min=-10.0, max=10.0)
+        F1 = torch.clamp(F1, min=-5.0, max=10.0)
+        F2 = torch.clamp(F2, min=-5.0, max=10.0)
         
         P1 = P1 * damping + F1 * (dt / 2.0)
         P2 = P2 * damping + F2 * (dt / 2.0)
@@ -122,8 +120,8 @@ def run_fourier_analysis_3d(matrix_size=64, audio_path=r"C:\Users\kiers\Download
         F1_new = -2.0 * (torch.mm(commutator_new, X2_eff) - torch.mm(X2_eff, commutator_new))
         F2_new = 2.0 * (torch.mm(commutator_new, X1_eff) - torch.mm(X1_eff, commutator_new))
         
-        F1_new = torch.clamp(F1_new, min=-10.0, max=10.0)
-        F2_new = torch.clamp(F2_new, min=-10.0, max=10.0)
+        F1_new = torch.clamp(F1_new, min=-5.0, max=10.0)
+        F2_new = torch.clamp(F2_new, min=-5.0, max=10.0)
         
         P1 = P1 * damping + F1_new * (dt / 2.0)
         P2 = P2 * damping + F2_new * (dt / 2.0)
@@ -133,7 +131,7 @@ def run_fourier_analysis_3d(matrix_size=64, audio_path=r"C:\Users\kiers\Download
         total_energy = pe_val + ke_val
         
         correlation = torch.abs(torch.mm(X1_eff, X2_eff)).numpy()
-        threshold = np.percentile(correlation, max(94.0 - float(mid_volt * 0.4), 89.0))
+        threshold = np.percentile(correlation, max(93.0 - float(mid_volt * 0.4), 88.0))
         G = nx.from_numpy_array((correlation > threshold).astype(int))
         
         curv_scale = compute_pure_python_curvature(G)
@@ -141,42 +139,49 @@ def run_fourier_analysis_3d(matrix_size=64, audio_path=r"C:\Users\kiers\Download
         
         nodes_list = list(G.nodes())
         
-        # FIXED: Added explicit axis dimension slices, [1], [2] to unpack 1D coordinates perfectly
-        xs = np.array([pos_3d[node][0] for node in nodes_list])
-        ys = np.array([pos_3d[node][1] for node in nodes_list])
-        zs = np.array([pos_3d[node][2] - (G.degree(node)*0.01 * bass_volt) if node in G else pos_3d[node][2] for node in nodes_list])
+        # --- UNLOCKING TRUE SWIRL TRACKING ---
+        # Instead of a static template layout, we extract the live diagonal elements of the active matrices.
+        # This means the X and Y coordinates on your screen are flowing straight out of the physical equations!
+        xs = np.diag(X1.detach().numpy())
+        ys = np.diag(X2.detach().numpy())
+        
+        # The Z axis acts as a depth offset driven directly by the localized momentum energy loops
+        zs = np.diag((P1 + P2).detach().numpy()) * 1.5 - (np.array([G.degree(n) if n in G else 0 for n in nodes_list]) * 0.005 * bass_volt)
         
         current_pos_3d = {node: (xs[i], ys[i], zs[i]) for i, node in enumerate(nodes_list)}
         
+        # Draw dynamic links
         for u, v in G.edges():
             if u in current_pos_3d and v in current_pos_3d:
                 ax.plot(
                     [current_pos_3d[u][0], current_pos_3d[v][0]],
                     [current_pos_3d[u][1], current_pos_3d[v][1]],
                     [current_pos_3d[u][2], current_pos_3d[v][2]],
-                    color='#00FFCC', alpha=0.08, linewidth=0.6
+                    color='#00FFCC', alpha=0.07, linewidth=0.5
                 )
                 
         node_sizes = [max(G.degree(n) * 7, 10) if n in G else 10 for n in nodes_list]
         node_colors = [G.degree(n) + float(high_volt * 6.0) if n in G else 0 for n in nodes_list]
         
         ax.scatter(xs, ys, zs, s=node_sizes, c=node_colors, cmap=plt.cm.plasma, alpha=0.85, edgecolors='#05050A', linewidths=0.2)
-        ax.view_init(elev=20 + math.sin(frame_idx * 0.05) * 5, azim=frame_idx * 0.5)
+        
+        # Rotate the viewer camera slowly over time to see the system swirling from different perspectives
+        ax.view_init(elev=25, azim=frame_idx * 0.8)
         
         ax.set_title(
-            f"Stabilized Phase Space System [FFT]\n"
-            f"PE (Action): {pe_val:.2f} | KE (Momentum): {ke_val:.2f}",
+            f"Active Phase-Space Trajectory Engine [FFT]\n"
+            f"PE (Action): {pe_val:.2f} | KE (Momentum): {ke_val:.2f} | Peak: {dominant_freq:.0f}Hz",
             color='#FFFFFF', fontsize=12, fontweight='bold', y=0.95
         )
 
-    print("\nExecuting audio-phase space simulation loop...")
+    print("\nProcessing audio frequencies and compiling active orbital paths...")
     ani = animation.FuncAnimation(fig, process_fourier_step_3d, frames=total_frames, interval=80, repeat=False)
     output_filename = "true_fft_universe_3d.gif"
     ani.save(output_filename, writer='pillow', fps=12)
     plt.close()
     csv_file.close()
-    print(f"\nSuccess! Orbit-stable self-stabilizing pass complete.")
-    print(f" -> Log Database Updated: .\\{metrics_log_path}")
+    print(f"\nSuccess! Fluid 3D phase-space trajectory compilation complete.")
+    print(f" -> Live Animation Saved: .\\{output_filename}")
 
 if __name__ == "__main__":
     run_fourier_analysis_3d()
