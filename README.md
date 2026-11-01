@@ -1,6 +1,8 @@
 
 # Audio-Reactive Phase-Space Engine: Emergent Geometry Toy Model
 
+spacetime_warped_audio.gif
+
 ![3D Spacetime Trajectory Animation](true_fft_universe_3d.gif)
 
 This repository houses a self-contained, audio-reactive Python simulation engine. It acts as a pre-geometric toy model, utilizing non-commutative matrix operator fields to explore how macroscopic, 3D network topologies and gravitational warping analogies can emerge from background-independent information frameworks.
