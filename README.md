@@ -1,4 +1,5 @@
-﻿# Audio-Reactive Phase-Space Engine: Emergent Geometry Toy Model
+
+# Audio-Reactive Phase-Space Engine: Emergent Geometry Toy Model
 
 ![3D Spacetime Trajectory Animation](true_fft_universe_3d.gif)
 
@@ -82,7 +83,7 @@ Use code with caution.
 - **Frequency Component Extraction:** Employs a one-dimensional Real Fast Fourier Transform (RFFT) to extract localized frequency voltage arrays. The raw frequency signals are split into localized sub-bands (Bass, Midrange, Highs), which act as real-time parameter injectors across a unified high-dimensional array.
 
 ### 2. High-Dimensional Optimization & The Convergence Loop
-- **The Optimization Wall Defeated:** Traditional gradient descent passes suffer from high objective function value initialization penalties ($>1,000,000$). This system addresses the non-convex loss landscape by utilizing a second-order **L-BFGS optimization loop** utilizing inverse Hessian matrix updates. 
+- **The Optimization Wall Defeated:** Traditional gradient descent passes suffer from high objective function value initialization penalties ($&gt;1,000,000$). This system addresses the non-convex loss landscape by utilizing a second-order **L-BFGS optimization loop** utilizing inverse Hessian matrix updates. 
 - **Deterministic Action Collapse:** The L-BFGS convergence loop enforces an immediate global action metric collapse—forcing high initial system variance down to a smooth, stable structural baseline within the first 10 processing cycles.
 - **Information Geometry Monitoring:** Real-time data concentration is monitored using a valid quantum density state metric module. As coordinate fields are compressed, the engine maps data-point density, tracking **von Neumann entropy concentration dropping from 4.31 down to a stable 0.11**. This certifies hyper-dense data structure packaging without losing structural information.
 
@@ -97,3 +98,13 @@ To validate performance limits against combinatorial explosions common in relati
 - **Real-Time Telemetry Ledgering:** Frame-by-frame computational states (Kinetic Energy variations, trace flux metrics, and unweighted edge curvature deltas) are flattened and committed via structured file-system appends to a local time-series database (`matrix_energy_metrics.csv`).
 - **3D Asset Generation:** Finalized spatial node coordinate matrices are dynamically serialized into an industry-standard geometric dataset (`warped_audio_universe.obj`). The resulting asset uses standard vector-broadcasting layouts (`Line3DCollection`), ensuring immediate, out-of-the-box compatibility with any client-side rendering ecosystem (WebGL, Three.js, Blender).
 - **Environment Isolation:** Zero reliance on unmanaged external C-compilers or bloated system tools. The repository relies strictly on optimized matrix operations (PyTorch/NumPy) inside a native Python virtual environment (`stable_quantum_env`), delivering full cross-platform portability.
+'@ | Out-File -FilePath README.md -Encoding utf8
+
+# 2. Stage the newly updated README.md file
+git add README.md
+
+# 3. Commit the changes locally
+git commit -m "Docs: Update README with high-performance Engineering Architecture metrics"
+
+# 4. Push directly to your remote repository
+**git push origin main**
