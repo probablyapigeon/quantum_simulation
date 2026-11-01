@@ -1,7 +1,6 @@
 
 # Audio-Reactive Phase-Space Engine: Emergent Geometry Toy Model
 
-spacetime_warped_audio.gif
 
 ![3D Spacetime Trajectory Animation](true_fft_universe_3d.gif)
 
@@ -46,7 +45,7 @@ python fourier_spacetime_engine.py
 
 This repository implements a high-performance, real-time data engineering pipeline designed to ingest uncompressed binary audio streams, execute high-dimensional matrix updates, and construct structured, production-compliant 3D coordinate geometry. By replacing standard non-convex optimization loops with a hardware-accelerated, second-order optimization pipeline, the architecture achieves deterministic execution and sub-polynomial computational scaling.
 
-Use code with caution.
+
 ┌──────────────────────────────┐
 │ Raw Audio Binary Stream (.mp3)│
 └──────────────┬───────────────┘
@@ -100,13 +99,4 @@ To validate performance limits against combinatorial explosions common in relati
 - **Real-Time Telemetry Ledgering:** Frame-by-frame computational states (Kinetic Energy variations, trace flux metrics, and unweighted edge curvature deltas) are flattened and committed via structured file-system appends to a local time-series database (`matrix_energy_metrics.csv`).
 - **3D Asset Generation:** Finalized spatial node coordinate matrices are dynamically serialized into an industry-standard geometric dataset (`warped_audio_universe.obj`). The resulting asset uses standard vector-broadcasting layouts (`Line3DCollection`), ensuring immediate, out-of-the-box compatibility with any client-side rendering ecosystem (WebGL, Three.js, Blender).
 - **Environment Isolation:** Zero reliance on unmanaged external C-compilers or bloated system tools. The repository relies strictly on optimized matrix operations (PyTorch/NumPy) inside a native Python virtual environment (`stable_quantum_env`), delivering full cross-platform portability.
-'@ | Out-File -FilePath README.md -Encoding utf8
 
-# 2. Stage the newly updated README.md file
-git add README.md
-
-# 3. Commit the changes locally
-git commit -m "Docs: Update README with high-performance Engineering Architecture metrics"
-
-# 4. Push directly to your remote repository
-**git push origin main**
